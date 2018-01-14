@@ -53,7 +53,7 @@ module type S =
     val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
   end
 
-(*s Sets implemented as reb-black trees. *)
+(*s Sets implemented as red-black trees. *)
 
 module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
 
@@ -66,7 +66,7 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
 
   (* Note the use of two constructors [Black] and [Red] to save space
      (resulting in longer code at a few places, e.g. in function [remove]).
-     These red-black trees saves 20\% of space w.r.t Ocaml's AVL, which
+     These red-black trees saves 20\% of space w.r.t OCaml's AVL, which
      store the height into a fourth argument. *)
 
   (*s For debug only: checks whether a tree is properly colored *)
@@ -75,17 +75,17 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   (* [check_aux s] checks invariants and returns the black height *)
   let rec check_aux = function
     | Empty ->
-	0
+      0
     | Red (Red _, _, _) | Red (_, _, Red _) ->
-			    raise Bad
+      raise Bad
     | Black (l, _, r) ->
-	let h = check_aux l in
-	if check_aux r <> h then raise Bad;
-	succ h
+      let h = check_aux l in
+      if check_aux r <> h then raise Bad;
+      succ h
     | Red (l, _, r) ->
-	let h = check_aux l in
-	if check_aux r <> h then raise Bad;
-	h
+      let h = check_aux l in
+      if check_aux r <> h then raise Bad;
+      h
 
   let check s = try ignore (check_aux s); true with Bad -> false
 
@@ -99,8 +99,8 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let rec mem x = function
     | Empty -> false
     | Black (l, v, r) | Red (l, v, r) ->
-        let c = Ord.compare x v in
-	c = 0 || mem x (if c < 0 then l else r)
+      let c = Ord.compare x v in
+      c = 0 || mem x (if c < 0 then l else r)
 
   (* Note: the variant for [mem] proposed in Okasaki's "Purely Functional Data
      Structures" is useless in the case of a ternary comparison function. *)
@@ -109,11 +109,11 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
     let rec mem x = function
       | Empty -> false
       | Node (_, l, v, r) ->
-          if Ord.compare x v < 0 then mem x l else memc v x r
+        if Ord.compare x v < 0 then mem x l else memc v x r
     and memc c x = function
       | Empty -> Ord.compare c x = 0
       | Node (_, l, v, r) ->
-	  if Ord.compare x v < 0 then memc c x l else memc v x r
+        if Ord.compare x v < 0 then memc c x l else memc v x r
   i*)
 
   let singleton x = Black (Empty, x, Empty)
@@ -122,34 +122,34 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
 
   let lbalance x1 x2 x3 = match x1, x2, x3 with
     | Red (Red (a,x,b), y, c), z, d ->
-	Red (Black (a,x,b), y, Black (c,z,d))
+      Red (Black (a,x,b), y, Black (c,z,d))
     | Red (a, x, Red (b,y,c)), z, d ->
-	Red (Black (a,x,b), y, Black (c,z,d))
+      Red (Black (a,x,b), y, Black (c,z,d))
     | a,x,b ->
-	Black (a,x,b)
+      Black (a,x,b)
 
   let rbalance x1 x2 x3 = match x1, x2, x3 with
     | a, x, Red (Red (b,y,c), z, d) ->
-	Red (Black (a,x,b), y, Black (c,z,d))
+      Red (Black (a,x,b), y, Black (c,z,d))
     | a, x, Red (b, y, Red (c,z,d)) ->
-	Red (Black (a,x,b), y, Black (c,z,d))
+      Red (Black (a,x,b), y, Black (c,z,d))
     | a,x,b ->
-	Black (a,x,b)
+      Black (a,x,b)
 
   let add x s =
     let rec ins = function
       | Empty ->
-	  Red (Empty, x, Empty)
+        Red (Empty, x, Empty)
       | Red (a, y, b) as s ->
-	  let c = Ord.compare x y in
-	  if c < 0 then Red (ins a, y, b)
-	  else if c > 0 then Red (a, y, ins b)
-	  else s
+        let c = Ord.compare x y in
+        if c < 0 then Red (ins a, y, b)
+        else if c > 0 then Red (a, y, ins b)
+        else s
       | Black (a, y, b) as s ->
-	  let c = Ord.compare x y in
-	  if c < 0 then lbalance (ins a) y b
-	  else if c > 0 then rbalance a y (ins b)
-	  else s
+        let c = Ord.compare x y in
+        if c < 0 then lbalance (ins a) y b
+        else if c > 0 then rbalance a y (ins b)
+        else s
     in
     match ins s with
       | Black _ as s -> s
@@ -163,26 +163,26 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
 
   let unbalanced_left = function
     | Red (Black (t1, x1, t2), x2, t3) ->
-	lbalance (Red (t1, x1, t2)) x2 t3, false
+      lbalance (Red (t1, x1, t2)) x2 t3, false
     | Black (Black (t1, x1, t2), x2, t3) ->
-	lbalance (Red (t1, x1, t2)) x2 t3, true
+      lbalance (Red (t1, x1, t2)) x2 t3, true
     | Black (Red (t1, x1, Black (t2, x2, t3)), x3, t4) ->
-	Black (t1, x1, lbalance (Red (t2, x2, t3)) x3 t4), false
+      Black (t1, x1, lbalance (Red (t2, x2, t3)) x3 t4), false
     | _ ->
-	assert false
+      assert false
 
   (* [unbalanced_right] repares invariant (2) when the black height of the
      right son exceeds (by 1) the black height of the left son *)
 
   let unbalanced_right = function
     | Red (t1, x1, Black (t2, x2, t3)) ->
-	rbalance t1 x1 (Red (t2, x2, t3)), false
+      rbalance t1 x1 (Red (t2, x2, t3)), false
     | Black (t1, x1, Black (t2, x2, t3)) ->
-	rbalance t1 x1 (Red (t2, x2, t3)), true
+      rbalance t1 x1 (Red (t2, x2, t3)), true
     | Black (t1, x1, Red (Black (t2, x2, t3), x3, t4)) ->
-	Black (rbalance t1 x1 (Red (t2, x2, t3)), x3, t4), false
+      Black (rbalance t1 x1 (Red (t2, x2, t3)), x3, t4), false
     | _ ->
-	assert false
+      assert false
 
   (* [remove_min s = (s',m,b)] extracts the minimum [m] of [s], [s'] being the
      resulting set, and indicates with [b] whether the black height has
@@ -190,31 +190,31 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
 
   let rec remove_min = function
     | Empty ->
-	assert false
+      assert false
     (* minimum is reached *)
     | Black (Empty, x, Empty) ->
-	Empty, x, true
+      Empty, x, true
     | Black (Empty, x, Red (l, y, r)) ->
-	Black (l, y, r), x, false
+      Black (l, y, r), x, false
     | Black (Empty, _, Black _) ->
-	assert false
+      assert false
     | Red (Empty, x, r) ->
-	r, x, false
+      r, x, false
     (* minimum is recursively extracted from [l] *)
     | Black (l, x, r) ->
-	let l',m,d = remove_min l in
-	let t = Black (l', x, r) in
-	if d then
-	  let t,d' = unbalanced_right t in t,m,d'
-	else
-	  t, m, false
+      let l',m,d = remove_min l in
+      let t = Black (l', x, r) in
+      if d then
+        let t,d' = unbalanced_right t in t,m,d'
+      else
+        t, m, false
     | Red (l, x, r) ->
-	let l',m,d = remove_min l in
-	let t = Red (l', x, r) in
-	if d then
-	  let t,d' = unbalanced_right t in t,m,d'
-	else
-	  t, m, false
+      let l',m,d = remove_min l in
+      let t = Red (l', x, r) in
+      if d then
+        let t,d' = unbalanced_right t in t,m,d'
+      else
+        t, m, false
 
   let blackify = function
     | Red (l, x, r) -> Black (l, x, r), false
@@ -226,53 +226,53 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let remove x s =
     let rec remove_aux = function
       | Empty ->
-	  Empty, false
+        Empty, false
       | Black (l, y, r) ->
-	  let c = Ord.compare x y in
-	  if c < 0 then
-	    let l',d = remove_aux l in
-	    let t = Black (l', y, r) in
-	    if d then unbalanced_right t else t, false
-	  else if c > 0 then
-	    let r',d = remove_aux r in
-	    let t = Black (l, y, r') in
-	    if d then unbalanced_left t else t, false
-	  else (* x = y *)
-	    (match r with
-	       | Empty ->
-		   blackify l
-	       | _ ->
-		   let r',m,d = remove_min r in
-		   let t = Black (l, m, r') in
-		   if d then unbalanced_left t else t, false)
+        let c = Ord.compare x y in
+        if c < 0 then
+          let l',d = remove_aux l in
+          let t = Black (l', y, r) in
+          if d then unbalanced_right t else t, false
+        else if c > 0 then
+          let r',d = remove_aux r in
+          let t = Black (l, y, r') in
+          if d then unbalanced_left t else t, false
+        else (* x = y *)
+          (match r with
+             | Empty ->
+               blackify l
+             | _ ->
+               let r',m,d = remove_min r in
+               let t = Black (l, m, r') in
+               if d then unbalanced_left t else t, false)
       | Red (l, y, r) ->
-	  let c = Ord.compare x y in
-	  if c < 0 then
-	    let l',d = remove_aux l in
-	    let t = Red (l', y, r) in
-	    if d then unbalanced_right t else t, false
-	  else if c > 0 then
-	    let r',d = remove_aux r in
-	    let t = Red (l, y, r') in
-	    if d then unbalanced_left t else t, false
-	  else (* x = y *)
-	    (match r with
-	       | Empty ->
-		   l, false
-	       | _ ->
-		   let r',m,d = remove_min r in
-		   let t = Red (l, m, r') in
-		   if d then unbalanced_left t else t, false)
+        let c = Ord.compare x y in
+        if c < 0 then
+          let l',d = remove_aux l in
+          let t = Red (l', y, r) in
+          if d then unbalanced_right t else t, false
+        else if c > 0 then
+          let r',d = remove_aux r in
+          let t = Red (l, y, r') in
+          if d then unbalanced_left t else t, false
+        else (* x = y *)
+          (match r with
+             | Empty ->
+               l, false
+             | _ ->
+               let r',m,d = remove_min r in
+               let t = Red (l, m, r') in
+               if d then unbalanced_left t else t, false)
     in
-    let s',_ = remove_aux s in s'
+    fst (remove_aux s)
 
   (*s The sorted list of elements *)
 
   let rec elements_aux accu = function
     | Empty ->
-	accu
+      accu
     | Black (l, v, r) | Red (l, v, r) ->
-	elements_aux (v :: elements_aux accu r) l
+      elements_aux (v :: elements_aux accu r) l
 
   let elements s =
     elements_aux [] s
@@ -290,21 +290,21 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let of_list sl =
     let rec build sl n k =
       if k = 0 then
-	if n = 0 then
-	  Empty, sl
-	else match sl with
-	  | [] ->
-	      assert false
-	  | x :: sl  ->
-	      Red (Empty, x, Empty), sl
+        if n = 0 then
+          Empty, sl
+        else match sl with
+          | [] ->
+            assert false
+          | x :: sl  ->
+            Red (Empty, x, Empty), sl
       else
-	let n' = (n - 1) / 2 in
-	match build sl n' (k - 1) with
-	  | _, [] ->
-	      assert false
-	  | l, x :: sl ->
-	      let r, sl = build sl (n - n' - 1) (k - 1) in
-	      Black (r, x, l), sl
+        let n' = (n - 1) / 2 in
+        match build sl n' (k - 1) with
+          | _, [] ->
+            assert false
+          | l, x :: sl ->
+            let r, sl = build sl (n - n' - 1) (k - 1) in
+            Black (r, x, l), sl
     in
     let n = List.length sl in
     fst (build sl n (log2 n))
@@ -314,14 +314,14 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let union_list l1 l2 =
     let rec merge_aux acc = function
       | [], l2 ->
-	  List.rev_append l2 acc
+        List.rev_append l2 acc
       | l1, [] ->
-	  List.rev_append l1 acc
+        List.rev_append l1 acc
       | (x1 :: r1 as l1), (x2 :: r2 as l2) ->
-	  let c = Ord.compare x1 x2 in
-	  if c < 0 then merge_aux (x1 :: acc) (r1, l2)
-	  else if c > 0 then merge_aux (x2 :: acc) (l1, r2)
-	  else merge_aux (x1 :: acc) (r1, r2)
+        let c = Ord.compare x1 x2 in
+        if c < 0 then merge_aux (x1 :: acc) (r1, l2)
+        else if c > 0 then merge_aux (x2 :: acc) (l1, r2)
+        else merge_aux (x1 :: acc) (r1, r2)
     in
     merge_aux [] (l1, l2)
 
@@ -333,12 +333,12 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let inter_list l1 l2 =
     let rec inter_aux acc = function
       | [], _ | _, [] ->
-	  acc
+        acc
       | (x1 :: r1 as l1), (x2 :: r2 as l2) ->
-	  let c = Ord.compare x1 x2 in
-	  if c = 0 then inter_aux (x1 :: acc) (r1, r2)
-	  else if c < 0 then inter_aux acc (r1, l2)
-	  else (* c > 0 *) inter_aux acc (l1, r2)
+        let c = Ord.compare x1 x2 in
+        if c = 0 then inter_aux (x1 :: acc) (r1, r2)
+        else if c < 0 then inter_aux acc (r1, l2)
+        else (* c > 0 *) inter_aux acc (l1, r2)
     in
     inter_aux [] (l1, l2)
 
@@ -350,14 +350,14 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
   let diff_list l1 l2 =
     let rec diff_aux acc = function
       | [], _ ->
-	  acc
+        acc
       | l1, [] ->
-	  List.rev_append l1 acc
+        List.rev_append l1 acc
       | (x1 :: r1 as l1), (x2 :: r2 as l2) ->
-	  let c = Ord.compare x1 x2 in
-	  if c = 0 then diff_aux acc (r1, r2)
-	  else if c < 0 then diff_aux (x1 :: acc) (r1, l2)
-	  else (* c > 0 *) diff_aux acc (l1, r2)
+        let c = Ord.compare x1 x2 in
+        if c = 0 then diff_aux acc (r1, r2)
+        else if c < 0 then diff_aux (x1 :: acc) (r1, l2)
+        else (* c > 0 *) diff_aux acc (l1, r2)
     in
     diff_aux [] (l1, l2)
 
@@ -372,8 +372,8 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
     | [], _ -> -1
     | _, [] -> 1
     | x1 :: r1, x2 :: r2 ->
-	let c = Ord.compare x1 x2 in
-	if c <> 0 then c else compare_list (r1, r2)
+      let c = Ord.compare x1 x2 in
+      if c <> 0 then c else compare_list (r1, r2)
 
   let compare s1 s2 = compare_list (elements s1, elements s2)
 
@@ -410,7 +410,7 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
     let rec filt accu = function
       | Empty -> accu
       | Black (l, v, r) | Red (l, v, r) ->
- 	  filt (filt (if p v then add v accu else accu) l) r
+        filt (filt (if p v then add v accu else accu) l) r
     in
     filt Empty s
 
@@ -418,7 +418,7 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
     let rec part (t, f as accu) = function
       | Empty -> accu
       | Black (l, v, r) | Red (l, v, r) ->
-	  part (part (if p v then (add v t, f) else (t, add v f)) l) r
+        part (part (if p v then (add v t, f) else (t, add v f)) l) r
     in
     part (Empty, Empty) s
 
