@@ -17,16 +17,18 @@
 
 (*s Sets interface. *)
 
-module type OrderedType =
+module type PrintableOrderedType =
   sig
     type t
     val compare : t -> t -> int
+    val to_string : t -> string
   end
 
 module type S =
   sig
     type elt
     type t
+    val show : t -> Notty.image
     val empty : t
     val is_empty : t -> bool
     val mem : elt -> t -> bool
@@ -55,11 +57,45 @@ module type S =
 
 (*s Sets implemented as red-black trees. *)
 
-module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
+module Make(Ord : PrintableOrderedType) : (S with type elt = Ord.t) = struct
 
   type elt = Ord.t
 
   type t = Empty | Black of t * elt * t | Red of t * elt * t
+
+  let show t =
+    let ghost = Notty.A.(fg (gray 5)) in
+    let red = Notty.A.(fg lightred) in
+    let empty_sym = 0x2022 in
+    let left_sym = 0x256d in
+    let line_sym = 0x2500 in
+    let right_sym = 0x256e in
+    let rec aux kind = function
+      | Empty ->
+        Notty.I.uchar ghost empty_sym 1 1,
+        0 (* arrow length (minus one), so that the caller's connects *)
+      | Red _ as n ->
+        aux2 kind red n
+      | Black _ as n ->
+        aux2 kind Notty.A.empty n
+    and aux2 kind attr = function
+      | Empty -> assert false (* only called by {!show} *)
+      | Red (l, x, r) | Black (l, x, r) ->
+        let li, la = aux `Left l in
+        let ri, ra = aux `Right r in
+        let open Notty.I in
+        let xi = string attr (Ord.to_string x) in
+        (hpad (width li - la - 1) 0
+          (uchar ghost left_sym 1 1 <|> uchar ghost line_sym la 1 <|>
+           xi <|>
+           uchar ghost line_sym ra 1 <|> uchar ghost right_sym 1 1))
+        <-> (li <|> hpad (width xi) 0 ri),
+        match kind with
+        | `Root -> 0 (* unused *)
+        | `Left -> width ri
+        | `Right -> width li
+    in
+    fst (aux `Root t)
 
   (* Invariants: (1) a red node has no red son, and (2) any path from the
      root to a leaf has the same number of black nodes *)

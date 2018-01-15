@@ -1,0 +1,16 @@
+opam-version: "1.2"
+name: "rbk"
+version: "0.5"
+maintainer: "Guillaume Huysmans <ghuysmans99@gmail.com>"
+authors: "Jean-Christophe Filliatre"
+homepage: "https://github.com/ghuysmans/rbk/"
+bug-reports: "https://github.com/ghuysmans/rbk/issues"
+dev-repo: "https://github.com/ghuysmans/rbk/"
+build: [
+  [make]
+]
+depends: [
+  "ocamlfind"
+  "notty"
+  "cmdliner"
+]

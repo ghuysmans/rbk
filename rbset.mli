@@ -16,16 +16,18 @@
 (*s Sets implemented as Red-Black trees. 
     Interface copied from Ocaml's [Set]. *)
 
-module type OrderedType =
+module type PrintableOrderedType =
   sig
     type t
     val compare : t -> t -> int
+    val to_string : t -> string
   end
 
 module type S =
   sig
     type elt
     type t
+    val show : t -> Notty.image
     val empty : t
     val is_empty : t -> bool
     val mem : elt -> t -> bool
@@ -52,5 +54,5 @@ module type S =
     val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
   end
 
-module Make(Ord : OrderedType) : (S with type elt = Ord.t)
+module Make(Ord : PrintableOrderedType) : (S with type elt = Ord.t)
 
