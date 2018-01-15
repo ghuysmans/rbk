@@ -1,32 +1,18 @@
-module Int = struct
-  type t = int
-  let compare = compare
-  let to_string = string_of_int
-end
-
-module Rb = Rbset.Make (Int)
+open Rbk
 
 let demo trace remove l =
-  let f t x =
-    let t' = Rb.add x t in
-    if trace then (
-      print_endline @@ "added " ^ string_of_int x;
-      Notty_unix.output_image_endline (Rb.show t')
-    );
-    t'
-  in
-  let t = List.fold_left f Rb.empty l in
+  let t = of_list ~trace:(trace || remove=[]) l in
   match remove with
   | [] -> ()
   | _ ->
     if not trace then (
       print_endline "initial state";
-      Notty_unix.output_image_endline (Rb.show t)
+      show t
     );
     let f' t x =
       print_endline @@ "removed " ^ string_of_int x;
       let t' = Rb.remove x t in
-      Notty_unix.output_image_endline (Rb.show t');
+      show t';
       t'
     in
     ignore (List.fold_left f' t remove)
@@ -47,6 +33,8 @@ let remove =
   Arg.(value & opt (list int) [] & info ["r"; "remove"] ~doc)
 
 let () =
-  let term = Term.(const demo $ trace $ remove $ elements) in
-  let info = Term.info "redblack" ~doc:"Red-Black tree colorful demo" in
-  Term.exit @@ Term.eval (term, info)
+  if not !Sys.interactive then (
+    let term = Term.(const demo $ trace $ remove $ elements) in
+    let info = Term.info "redblack" ~doc:"Red-Black tree colorful demo" in
+    Term.exit @@ Term.eval (term, info)
+  )

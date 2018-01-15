@@ -1,0 +1,8 @@
+#use "topfind"
+#require "notty.unix"
+#directory "_build"
+#load_rec "rbk.cmo"
+#show_module Rbk
+include Rbk
+let () =
+  print_endline "include Rbk"
